@@ -22,7 +22,7 @@ import game
 from util import nearestPoint, Counter
 
 from random import randrange, random as rand
-import sys
+import sys, math
 
 agent_info = {}
 
@@ -248,27 +248,31 @@ class DummyAgent(CaptureAgent):
 class OffensiveReflexAgent(DummyAgent):
     # weights = {'successorScore': 100, 'foodRemaining': -1, 'distanceToFood': -.1, 'ghostDistance': .5,
     #             'distanceToSpawn': .5, 'pelletsCarrying': .9}
-    weights = {'successorScore': 99.8856, 'foodRemaining': -0.4694, 'distanceToFood': -0.6182, 'ghostDistance': 5, 'distanceToSpawn': 0.3687, 'pelletsCarrying':0.8911}
+    weights = {'successorScore': 99.8856, 'foodRemaining': -0.4694, 'distanceToFood': -0.6182, 'ghostDistance': 5,
+     'distanceToSpawn': -1.1, 'pelletsCarrying':0.6}#, 'loadRatio': -1}
+
+    episode = DummyAgent.nth
+
+    def getWeights(self, gameState, action):
+        return OffensiveReflexAgent.weights
 
     def starting_state(self, gameState, action):
         i = agent_info[self.index]
         food_difference = len(self.getFood(self.getSuccessor(gameState, action)).asList()) + i['numReturned'] + i['numCarrying']
         return i['totalFood'] < food_difference
 
-    def getWeights(self, gameState, action):
-        return OffensiveReflexAgent.weights
-
     def getFeatures(self, gameState, action):
-        global agent_info, episode_num
+        global agent_info
 
-        if self.starting_state(gameState,action):
-            #print(agent_info[self.index])
-            #print(len(self.getFood(self.getSuccessor(gameState, action)).asList()))
+        if OffensiveReflexAgent.episode != DummyAgent.nth: #self.starting_state(gameState,action):
+            OffensiveReflexAgent.episode = DummyAgent.nth
+            print(agent_info[self.index])
+            print(len(self.getFood(self.getSuccessor(gameState, action)).asList()))
             agent_info[self.index] = {'numReturned': 0,
                                       'numCarrying': 0,
                                       'totalFood': len(self.getFood(self.getSuccessor(gameState, action)).asList()),
                                       'totalFoodSet': True}
-            #print('Resetting carry num and return num...\n\n')
+            print('Resetting carry num and return num...\n\n')
 
         feature_names = ['successorScore', 'foodRemaining', 'distanceToFood', 'ghostDistance',
                          'distanceToSpawn', 'pelletsCarrying', 'totalFood', 'run']
@@ -314,9 +318,9 @@ class OffensiveReflexAgent(DummyAgent):
         # print('vars', gameState.getAgentState(self.index).__dict__)
 
         features = Counter(dict(zip(features.keys(), normalize(list(features.values()), 0, 1))))
-        
-        return features
 
+        if info['numCarrying'] > 0: print(features)
+        return features
 
 
 class DefensiveReflexAgent(DummyAgent):
