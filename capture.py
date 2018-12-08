@@ -391,16 +391,16 @@ class CaptureRules:
 
     # Inject global info at DummyAgent class
     # eps from 0.5 to 0
-    DummyAgent.eps = DummyAgent.weighted_average(0, 1 - DummyAgent.nth / (DummyAgent.training_n - 1), 0.5)
-    if DummyAgent.eps < 0: DummyAgent.eps = 0
+    DummyAgent.eps = DummyAgent.weighted_average(0, 1 - DummyAgent.nth / (DummyAgent.training_n - 1), 0.8)
+    if DummyAgent.eps < 0 or DummyAgent.training_n == 0 or DummyAgent.nth >= DummyAgent.training_n : DummyAgent.eps = 0
     # alpha from 0.25 to 0.05
-    DummyAgent.alpha = DummyAgent.weighted_average(0.05, 1 - DummyAgent.nth / (DummyAgent.training_n - 1), 0.25)
-    if DummyAgent.eps < 0: DummyAgent.eps = 0
+    DummyAgent.alpha = DummyAgent.weighted_average(0.2, 1 - DummyAgent.nth / (DummyAgent.training_n - 1), 0.8)
+    if DummyAgent.alpha < 0 or DummyAgent.training_n == 0 or DummyAgent.nth >= DummyAgent.training_n : DummyAgent.alpha = 0
     
     # print("Offensive: {}".format(OffensiveReflexAgent.weights))
     # print("Defensive: {}".format(DefensiveReflexAgent.weights))
     for agent in agents:
-      print("{}: {}\n".format(type(agent), {k:round(v, 4) for k, v in agent.weights.items()}))
+      print("{}: {}\n".format(type(agent), {k:round(v, 4) for k, v in agent.getWeights(None, None).items()}))
     print("episode: {}; alpha: {}; eps: {}\n-------------------------".format(DummyAgent.nth, DummyAgent.alpha, DummyAgent.eps))
     
     return game
@@ -1000,7 +1000,7 @@ def runGames( layouts, agents, display, length, numGames, record, numTraining,
     print('Playing %d training games' % numTraining)
 
   # Inject global info at DummyAgent class
-  DummyAgent.training_n = numTraining - 1
+  DummyAgent.training_n = numTraining
   
   for i in range( numGames ):
     beQuiet = i < numTraining

@@ -19,9 +19,10 @@ import random, time, util, sys
 # import random, time, util
 from game import Directions
 import game
-from util import nearestPoint
+from util import nearestPoint, Counter
 
 from random import randrange, random as rand
+import sys
 
 agent_info = {}
 
@@ -30,8 +31,19 @@ agent_info = {}
 # Team creation #
 #################
 
+"""
+Cheat code
+"""
 
-def createTeam(indices, isRed, first='OffensiveReflexAgent', second='DefensiveReflexAgent'):
+orig_stdout = sys.stdout
+f = open('log.txt', 'w')
+#sys.stdout = f
+
+
+#sys.stdout = orig_stdout
+#f.close()
+
+def createTeam(indices, isRed, first='OffensiveReflexAgent', second='DefensiveReflexAgent', numTraining=0):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -59,6 +71,10 @@ def createTeam(indices, isRed, first='OffensiveReflexAgent', second='DefensiveRe
     # The following line is an example only; feel free to change it.
     # return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
+def normalize(listObj, min_, max_):
+    w = np.array(listObj)
+    w = np.interp(w, (w.min(), w.max()), (min_, max_))
+    return w.tolist()
 
 ##########
 # Agents #
@@ -230,22 +246,29 @@ class DummyAgent(CaptureAgent):
 
 
 class OffensiveReflexAgent(DummyAgent):
+    # weights = {'successorScore': 100, 'foodRemaining': -1, 'distanceToFood': -.1, 'ghostDistance': .5,
+    #             'distanceToSpawn': .5, 'pelletsCarrying': .9}
+    weights = {'successorScore': 99.8856, 'foodRemaining': -0.4694, 'distanceToFood': -0.6182, 'ghostDistance': 5, 'distanceToSpawn': 0.3687, 'pelletsCarrying':0.8911}
+
     def starting_state(self, gameState, action):
         i = agent_info[self.index]
         food_difference = len(self.getFood(self.getSuccessor(gameState, action)).asList()) + i['numReturned'] + i['numCarrying']
         return i['totalFood'] < food_difference
 
+    def getWeights(self, gameState, action):
+        return OffensiveReflexAgent.weights
+
     def getFeatures(self, gameState, action):
         global agent_info, episode_num
 
         if self.starting_state(gameState,action):
-            print(agent_info[self.index])
-            print(len(self.getFood(self.getSuccessor(gameState, action)).asList()))
+            #print(agent_info[self.index])
+            #print(len(self.getFood(self.getSuccessor(gameState, action)).asList()))
             agent_info[self.index] = {'numReturned': 0,
                                       'numCarrying': 0,
                                       'totalFood': len(self.getFood(self.getSuccessor(gameState, action)).asList()),
                                       'totalFoodSet': True}
-            print('Resetting carry num and return num...\n\n')
+            #print('Resetting carry num and return num...\n\n')
 
         feature_names = ['successorScore', 'foodRemaining', 'distanceToFood', 'ghostDistance',
                          'distanceToSpawn', 'pelletsCarrying', 'totalFood', 'run']
@@ -290,14 +313,18 @@ class OffensiveReflexAgent(DummyAgent):
         # print('remaining', len(foodList), end='')
         # print('vars', gameState.getAgentState(self.index).__dict__)
 
+        features = Counter(dict(zip(features.keys(), normalize(list(features.values()), 0, 1))))
+        
         return features
 
-    def getWeights(self, gameState, action):
-        return {'successorScore': 100, 'foodRemaining': -1, 'distanceToFood': -.1, 'ghostDistance': .5,
-                'distanceToSpawn': .5, 'pelletsCarrying': .9}
 
 
 class DefensiveReflexAgent(DummyAgent):
+    weights = {'numInvaders': -3, 'onDefense': 1, 'invaderDistance': -1, 'stop': -1, 'reverse': -1}
+
+    def getWeights(self, gameState, action):
+        return DefensiveReflexAgent.weights
+
     def getFeatures(self, gameState, action):
         feature_names = ['numInvaders', 'onDefense', 'invaderDistance', 'stop', 'reverse']
         features = util.Counter()
@@ -324,8 +351,7 @@ class DefensiveReflexAgent(DummyAgent):
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
         features['reverse'] = 1 if action == rev else 0
 
+        features = Counter(dict(zip(features.keys(), normalize(list(features.values()), 0, 1))))
+
         return features
 
-    # Depreciated
-    def getWeights(self, gameState, action):
-        return {'numInvaders': -1, 'onDefense': 1, 'invaderDistance': -1, 'stop': -1, 'reverse': -1}
