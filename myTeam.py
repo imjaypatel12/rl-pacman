@@ -19,17 +19,19 @@ import random, time, util, sys
 # import random, time, util
 from game import Directions
 import game
-from util import nearestPoint, Counter
+from util import nearestPoint
+
 from random import randrange, random as rand
+
+agent_info = {}
 
 
 #################
 # Team creation #
 #################
 
-# def createTeam(firstIndex, secondIndex, isRed,
-#               first = 'DummyAgent', second = 'DummyAgent'):
-def createTeam(indices, isRed, first='OffensiveReflexAgent', second='DefensiveReflexAgent', numTraining=0):
+
+def createTeam(indices, isRed, first='OffensiveReflexAgent', second='DefensiveReflexAgent'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -45,19 +47,17 @@ def createTeam(indices, isRed, first='OffensiveReflexAgent', second='DefensiveRe
     behavior is what you want for the nightly contest.
     """
     # XXX Assigns roles to the Pacman agents.
-    # agents = [eval('OffensiveReflexAgent' if (index//2)%2 == 0 else 'DefensiveReflexAgent')(index) for index in indices]
-    agents = [eval('OffensiveReflexAgent' if (index // 2) % 2 == 0 else 'DefensiveReflexAgent')(index) for index in
-              indices]
+    agents = [eval('OffensiveReflexAgent' if (index//2)%2 == 0 else 'DefensiveReflexAgent')(index) for index in indices]
+    # agents = [eval('OffensiveReflexAgent' if (index // 2) % 2 == 0 else 'DefensiveReflexAgent')(index) for index in
+    #           indices]
 
-    return agents
+    for a in agents:
+        agent_info[a.index] = {'numReturned':0, 'numCarrying':0, 'totalFood': 0, 'totalFoodSet': False}
+
+    return agents  # [eval('DefensiveReflexAgent')(index) for index in indices]
 
     # The following line is an example only; feel free to change it.
     # return [eval(first)(firstIndex), eval(second)(secondIndex)]
-
-def normalize(listObj, min_, max_):
-    w = np.array(listObj)
-    w = np.interp(w, (w.min(), w.max()), (min_, max_))
-    return w.tolist()
 
 
 ##########
@@ -72,14 +72,19 @@ class DummyAgent(CaptureAgent):
     rewardDiscount = 0.9
     training_n, nth, alpha, eps = (0, 0, 0.8, 0.5)
 
+    def __init__(self, index):
+        self.weights = self.getWeights(None, None)
+        self.stepSize = 0.8
+        self.rewardDiscount = 0.9
+        super().__init__(index)
+
     @staticmethod
-    def weighted_average(weight0Val:float, weight:float, weight1Val:float) -> float:
-        return weight0Val*(1 - weight) + weight1Val*weight
+    def weighted_average(weight0Val: float, weight: float, weight1Val: float) -> float:
+        return weight0Val * (1 - weight) + weight1Val * weight
 
     def registerInitialState(self, gameState):
         self.start = gameState.getAgentPosition(self.index)
         CaptureAgent.registerInitialState(self, gameState)
-
 
     def updateWeights(self, gameState, action):
         """
@@ -94,23 +99,22 @@ class DummyAgent(CaptureAgent):
 
         agent_class = type(self)
         weights = agent_class.weights
-        
-        #self.getWeights(gameState, action)
+
+        # self.getWeights(gameState, action)
         features = self.getFeatures(gameState, action)
 
         for (f, w) in weights.items():
             if f in features:
                 weights[f] = w + DummyAgent.alpha \
-                            * (reward + DummyAgent.rewardDiscount * nextQValue - currentQValue) \
-                            * features[f]
+                             * (reward + DummyAgent.rewardDiscount * nextQValue - currentQValue) \
+                             * features[f]
 
         # to avoid the horror!
-        #weights = dict(zip(weights.keys(), normalize(list(weights.values()), -1000, 1000)))
-        #agent_class.weights = weights
-        #print(features)
-        #print(weights)
-        #print("---")
-
+        # weights = dict(zip(weights.keys(), normalize(list(weights.values()), -1000, 1000)))
+        # agent_class.weights = weights
+        # print(features)
+        # print(weights)
+        # print("---")
 
     def _chooseAction_(self, gameState):
         actions = gameState.getLegalActions(self.index)
@@ -138,7 +142,6 @@ class DummyAgent(CaptureAgent):
 
         return random.choice(bestActions)
 
-
     def chooseAction(self, gameState):
         """
         Picks among the actions with the highest Q(s,a).
@@ -146,7 +149,7 @@ class DummyAgent(CaptureAgent):
         actions = gameState.getLegalActions(self.index)
 
         return actions[randrange(len(actions))] if rand() < DummyAgent.eps \
-                         else self.computeAction(gameState, actions)
+            else self.computeAction(gameState, actions)
 
     def computeAction(self, gameState, actions):
         # You can profile your evaluation time by uncommenting these lines
@@ -177,7 +180,6 @@ class DummyAgent(CaptureAgent):
 
         return bestAction
 
-
     def getSuccessor(self, gameState, action):
         """
         Finds the next successor which is a grid position (location tuple).
@@ -190,7 +192,6 @@ class DummyAgent(CaptureAgent):
         else:
             return successor
 
-
     def evaluate(self, gameState, action):
         """
         Computes a linear combination of features and feature weights
@@ -198,7 +199,6 @@ class DummyAgent(CaptureAgent):
         features = self.getFeatures(gameState, action)
         weights = self.getWeights(gameState, action)
         return features * weights
-
 
     def getFeatures(self, gameState, action):
         """
@@ -209,7 +209,6 @@ class DummyAgent(CaptureAgent):
         features['successorScore'] = self.getScore(successor)
         return features
 
-
     def getWeights(self, gameState, action):
         """
         Normally, weights do not depend on the gamestate.  They can be either
@@ -217,61 +216,88 @@ class DummyAgent(CaptureAgent):
         """
         return self.weights
 
-
     def getRole(self, agent):
         """
         Returns the subclass name to identify the role of an agent
         """
         return agent
 
+    def getReward(self, gameState, action):
+        """
+        Return the reward for taking an action given the game state
+        """
+        return 1
+
 
 class OffensiveReflexAgent(DummyAgent):
-    weights = {'foodRemaining': 1, 'successorScore': 1, 'distanceToFood': 1, 'run': 1, 'ghostDistance': 1,
-                'stop': 1, 'reverse': 1}
+    def starting_state(self, gameState, action):
+        i = agent_info[self.index]
+        food_difference = len(self.getFood(self.getSuccessor(gameState, action)).asList()) + i['numReturned'] + i['numCarrying']
+        return i['totalFood'] < food_difference
 
     def getFeatures(self, gameState, action):
+        global agent_info, episode_num
+
+        if self.starting_state(gameState,action):
+            print(agent_info[self.index])
+            print(len(self.getFood(self.getSuccessor(gameState, action)).asList()))
+            agent_info[self.index] = {'numReturned': 0,
+                                      'numCarrying': 0,
+                                      'totalFood': len(self.getFood(self.getSuccessor(gameState, action)).asList()),
+                                      'totalFoodSet': True}
+            print('Resetting carry num and return num...\n\n')
+
+        feature_names = ['successorScore', 'foodRemaining', 'distanceToFood', 'ghostDistance',
+                         'distanceToSpawn', 'pelletsCarrying', 'totalFood', 'run']
         features = util.Counter()
+        for name in feature_names:
+            features[name] = 0
 
         successor = self.getSuccessor(gameState, action)
-        myPos = successor.getAgentState(self.index).getPosition()
-        #features['successorScore'] = self.getScore(successor)
-        # print("Score", features['successorScore'])
+        is_pacman = successor.getAgentState(self.index).isPacman
+        myPos = successor.getAgentState(self.index).getPosition()  # (X,Y)
+        features['successorScore'] = self.getScore(successor)
 
         foodList = self.getFood(successor).asList()
-        features['foodRemaining'] = -len(foodList)
+        features['foodRemaining'] = len(foodList)
 
-        # default value of distance to nearest food to +infinity
-        features['distanceToFood'] = minDistToFood = -9999
+        # default value of distance to nearest food to -1
+        features['distanceToFood'] = -1
         if foodList:
             minDistToFood = min([self.getMazeDistance(myPos, food) for food in foodList])
-            features['distanceToFood'] = -minDistToFood
+            features['distanceToFood'] = minDistToFood
 
         opponentAgents = [successor.getAgentState(i) for i in self.getOpponents(successor)]
         ghosts = [a for a in opponentAgents if not a.isPacman and a.getPosition()]
 
-        features['ghostDistance'] = -9999
-        if ghosts:  # if there are ghosts
-            distsToGhosts = [self.getMazeDistance(myPos, a.getPosition()) for a in ghosts]
-            features['ghostDistance'] = -min(distsToGhosts)
+        # if there are ghosts
+        features['ghostDistance'] = min([self.getMazeDistance(myPos, a.getPosition()) for a in ghosts]) \
+            if ghosts and is_pacman else -1
 
-            # run(1) if ghosts are closer than food, else don't run(0).
-            #features['run'] = 1 if features['ghostDistance'] < minDistToFood else 0
+        features['distanceToSpawn'] = self.getMazeDistance(myPos, gameState.getInitialAgentPosition(self.index))
+        features['run'] = 1 if (features['ghostDistance'] < features['distanceToFood']) and features['ghostDistance'] \
+                               > 0 else 0
+        info = agent_info[self.index]
+        if is_pacman:
+            info['numCarrying'] = info['totalFood'] - (features['foodRemaining'] + info['numReturned'])
+            features['pelletsCarrying'] = info['numCarrying']
 
-        #features['stop'] = 1 if action == Directions.STOP else 0
-        rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-        #features['reverse'] = 1 if action == rev else 0
+        elif info['numCarrying'] > 0:
+            info['numReturned'] = info['numCarrying'] if features['distanceToSpawn'] != 0 else info['numReturned']
+            info['numCarrying'] = 0
+            print('Returned', info['numReturned']) if features['distanceToSpawn'] != 0 else print('Agent was Killed')
 
-        features = Counter(dict(zip(features.keys(), normalize(list(features.values()), 0, 1))))
+        # print('remaining', len(foodList), end='')
+        # print('vars', gameState.getAgentState(self.index).__dict__)
 
         return features
 
     def getWeights(self, gameState, action):
-        return OffensiveReflexAgent.weights
+        return {'successorScore': 100, 'foodRemaining': -1, 'distanceToFood': -.1, 'ghostDistance': .5,
+                'distanceToSpawn': .5, 'pelletsCarrying': .9}
 
 
 class DefensiveReflexAgent(DummyAgent):
-    weights = {'numInvaders': 1, 'onDefense': 1, 'invaderDistance': 1, 'stop': 1, 'reverse': 1}
-
     def getFeatures(self, gameState, action):
         feature_names = ['numInvaders', 'onDefense', 'invaderDistance', 'stop', 'reverse']
         features = util.Counter()
@@ -287,20 +313,19 @@ class DefensiveReflexAgent(DummyAgent):
 
         # Computes distance to invaders we can see
         enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
-        invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
+        invaders = [a for a in enemies if a.isPacman and a.getPosition()]
 
-        features['numInvaders'] = - len(invaders)
-        # Distance to nearest invader. Infinite if no invaders.
-        features['invaderDistance'] = - min([self.getMazeDistance(myPos, a.getPosition()) for a in invaders]) \
-            if invaders else 0
+        features['numInvaders'] = len(invaders)
+        # Distance to nearest invader. Large if no invaders.
+        features['invaderDistance'] = min([self.getMazeDistance(myPos, a.getPosition()) for a in invaders]) \
+            if invaders else -1
 
-        # TODO Figure out what these do lol
-        #features['stop'] = 1 if action == Directions.STOP else 0
+        features['stop'] = 1 if action == Directions.STOP else 0
         rev = Directions.REVERSE[gameState.getAgentState(self.index).configuration.direction]
-        #features['reverse'] = 1 if action == rev else 0
+        features['reverse'] = 1 if action == rev else 0
 
-        features = Counter(dict(zip(features.keys(), normalize(list(features.values()), 0, 1))))
         return features
 
+    # Depreciated
     def getWeights(self, gameState, action):
-        return DefensiveReflexAgent.weights
+        return {'numInvaders': -1, 'onDefense': 1, 'invaderDistance': -1, 'stop': -1, 'reverse': -1}
