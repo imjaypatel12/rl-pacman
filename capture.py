@@ -397,8 +397,10 @@ class CaptureRules:
     DummyAgent.alpha = DummyAgent.weighted_average(0.05, 1 - DummyAgent.nth / (DummyAgent.training_n - 1), 0.25)
     if DummyAgent.eps < 0: DummyAgent.eps = 0
     
-    print("Offensive: {}".format(OffensiveReflexAgent.weights))
-    print("Defensive: {}".format(DefensiveReflexAgent.weights))
+    # print("Offensive: {}".format(OffensiveReflexAgent.weights))
+    # print("Defensive: {}".format(DefensiveReflexAgent.weights))
+    for agent in agents:
+      print("{}: {}\n".format(type(agent), {k:round(v, 4) for k, v in agent.weights.items()}))
     print("episode: {}; alpha: {}; eps: {}\n-------------------------".format(DummyAgent.nth, DummyAgent.alpha, DummyAgent.eps))
     
     return game
